@@ -37,7 +37,6 @@ typedef struct {
 // 函數宣告
 esp_err_t mpu6050_init(void);
 esp_err_t mpu6050_read_data(mpu6050_data_t*);
-esp_err_t mpu6050_who_am_i(void); 
 
 
 #ifdef __cplusplus

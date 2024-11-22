@@ -2,21 +2,18 @@
 
 ## 硬體資訊
 - 開發板型號：ESP32-S3-WROOM-1
-- 最後更新日期：2024-11-20
+- 最後更新日期：2024-11-23
 
 ## 當前專案使用設備
-1. MPU6050 傳感器 (I2C模式)
+1. MPU6050 傳感器 (I2C模式，地址：0x68)
    - SCL: GPIO0
    - SDA: GPIO1
    - VCC: 3.3V
    - GND: GND
 
-2. OLED 顯示器 (SPI模式)
-   - SCK: GPIO36
-   - SDA/MOSI: GPIO39
-   - RES: GPIO41
-   - DC: GPIO42
-   - CS: GPIO38
+2. OLED 顯示器 (I2C模式，地址：0x3C)
+   - SCL: GPIO0 (與 MPU6050 共用)
+   - SDA: GPIO1 (與 MPU6050 共用)
    - VCC: 3.3V
    - GND: GND
 
@@ -51,19 +48,19 @@
 | GPIO編號 | 基本功能 | RTC功能 | 特殊功能 | 使用狀態 | 備註 |
 |---------|---------|---------|----------|---------|------|
 | GND     | 電源    | -       | 接地      | 🔒 已使用   | 必要連接 |
-| IO1     | GPIO    | RTC_GPIO1 | sar_i2c_sda_0 | ✅ 已使用 | I2C SDA (MPU6050) |
+| IO1     | GPIO    | RTC_GPIO1 | sar_i2c_sda_0 | ✅ 已使用 | I2C SDA (MPU6050/OLED) |
 | IO2     | GPIO    | RTC_GPIO2 | TOUCH2/ADC1_CH1 | ⚪ 未使用 | 支援觸控/ADC |
 | TXD     | UART    | -       | 串口發送   | ⚠️ 保留   | 預設UART0 |
 | RXD     | UART    | -       | 串口接收   | ⚠️ 保留   | 預設UART0 |
-| IO42    | GPIO    | -       | MTMS      | ✅ 已使用   | OLED DC |
-| IO41    | GPIO    | -       | MTDI      | ✅ 已使用   | OLED RES |
+| IO42    | GPIO    | -       | MTMS      | ⚪ 未使用   | - |
+| IO41    | GPIO    | -       | MTDI      | ⚪ 未使用   | - |
 | IO40    | GPIO    | -       | MISO      | ⚪ 未使用   | SPI通訊 |
-| IO39    | GPIO    | -       | MOSI      | ✅ 已使用   | OLED MOSI |
-| IO38    | GPIO    | -       | CSO       | ✅ 已使用   | OLED CS |
+| IO39    | GPIO    | -       | MOSI      | ⚪ 未使用   | - |
+| IO38    | GPIO    | -       | CSO       | ⚪ 未使用   | - |
 | IO37    | GPIO    | -       | SPIHD     | ⚪ 未使用   | SPI通訊 |
-| IO36    | GPIO    | -       | SPICLK    | ✅ 已使用   | OLED SCK |
+| IO36    | GPIO    | -       | SPICLK    | ⚪ 未使用   | - |
 | IO35    | GPIO    | -       | SPID      | ⚪ 未使用   | SPI數據 |
-| IO0     | GPIO    | RTC_GPIO0 | sar_i2c_scl_0 | ✅ 已使用 | I2C SCL (MPU6050) |
+| IO0     | GPIO    | RTC_GPIO0 | sar_i2c_scl_0 | ✅ 已使用 | I2C SCL (MPU6050/OLED) |
 | IO45    | GPIO    | -       | SPIWP     | ⚪ 未使用   | SPI通訊 |
 | IO48    | GPIO    | -       | SPICLK_N  | ⚪ 未使用   | SPI差分時鐘 |
 | IO47    | GPIO    | -       | SPICLK_P  | ⚪ 未使用   | SPI差分時鐘 |
@@ -76,10 +73,16 @@
 
 | GPIO編號 | RTC GPIO | I2C功能 | 備註 |
 |---------|----------|---------|------|
-| GPIO0   | RTC_GPIO0 | sar_i2c_scl_0 | ✅ I2C時鐘線 (已用於MPU6050) |
-| GPIO1   | RTC_GPIO1 | sar_i2c_sda_0 | ✅ I2C數據線 (已用於MPU6050) |
+| GPIO0   | RTC_GPIO0 | sar_i2c_scl_0 | ✅ I2C時鐘線 (MPU6050/OLED) |
+| GPIO1   | RTC_GPIO1 | sar_i2c_sda_0 | ✅ I2C數據線 (MPU6050/OLED) |
 | GPIO2   | RTC_GPIO2 | sar_i2c_scl_1 | ⚪ I2C時鐘線(備用) |
 | GPIO3   | RTC_GPIO3 | sar_i2c_sda_1 | ⚪ I2C數據線(備用) |
+
+## I2C設備地址對照表
+| 設備名稱 | I2C地址 | 腳位 |
+|---------|---------|------|
+| MPU6050 | 0x68    | SCL: GPIO0, SDA: GPIO1 |
+| OLED    | 0x3C    | SCL: GPIO0, SDA: GPIO1 |
 
 ## 功能說明
 1. RTC功能：在深度睡眠模式下仍可工作的GPIO
@@ -99,17 +102,19 @@
 - 🔒 必要連接
 - ⚡ 電源相關
 
-## 更新記錄
-- 2024-11-20 創建文檔
-- 2024-11-20 更新腳位分配：分配 GPIO0/GPIO1 用於 MPU6050 的 I2C 通訊
-- 2024-11-20 更新腳位分配：分配 GPIO36/39/41/42/38 用於 OLED 的 SPI 通訊
-
 ## 注意事項
 1. GPIO0 為 Strapping Pin，開機時需注意不要被拉低
 2. USB 相關腳位 (GPIO19/20) 建議保留不使用
 3. UART0 (TXD/RXD) 為預設下載及除錯埠，建議保留
 4. 32KHz 晶振腳位 (GPIO13/14) 如果使用外部晶振需保留
 5. 使用 ADC 時注意通道限制和電壓範圍
-6. I2C 設備注意位址不要衝突
-7. 建議為 I2C 匯流排加上 4.7kΩ 上拉電阻
-8. SPI通訊速度較I2C快，適合用於顯示器等需要高速傳輸的設備
+6. I2C 設備注意位址不要衝突：
+   - MPU6050: 0x68
+   - OLED: 0x3C
+7. 建議在 SCL(GPIO0) 和 SDA(GPIO1) 各接一個 4.7kΩ 上拉電阻到 3.3V
+8. I2C 通訊速率建議設定在 400kHz 以下，以確保穩定性
+
+## 更新記錄
+- 2024-11-20 創建文檔
+- 2024-11-20 更新腳位分配：分配 GPIO0/GPIO1 用於 MPU6050 的 I2C 通訊
+- 2024-11-23 更新配置：將 OLED 改為 I2C 模式，與 MPU6050 共用 I2C 匯流排
