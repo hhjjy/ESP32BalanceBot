@@ -10,7 +10,7 @@ static const char *TAG = "Main";
 // I2C 配置
 #define I2C_MASTER_SCL_IO           0      // SCL GPIO
 #define I2C_MASTER_SDA_IO           1      // SDA GPIO
-#define I2C_MASTER_NUM              0      // I2C port number
+#define I2C_MASTER_NUM              I2C_NUM_0      // I2C port number
 #define I2C_MASTER_FREQ_HZ          400000 // I2C master clock frequency
 #define I2C_MASTER_TIMEOUT_MS       1000
 
@@ -63,5 +63,31 @@ extern "C" void app_main(void)
     while (1)
     {
         // 讀取原始數據
+        mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+        temp = mpu.getTemperature();
 
+        // 轉換數據
+        float temp_c = temp / 340.0f + 36.53f;
+        float acc_x = ax / 16384.0f;  // ±2g
+        float acc_y = ay / 16384.0f;
+        float acc_z = az / 16384.0f;
+        float gyro_x = gx / 131.0f;   // ±250°/s
+        float gyro_y = gy / 131.0f;
+        float gyro_z = gz / 131.0f;
+
+        // 輸出數據
+        ESP_LOGI(TAG, "=====================");
+        ESP_LOGI(TAG, "加速度 (g):");
+        ESP_LOGI(TAG, "  X: %.2f", acc_x);
+        ESP_LOGI(TAG, "  Y: %.2f", acc_y);
+        ESP_LOGI(TAG, "  Z: %.2f", acc_z);
+        ESP_LOGI(TAG, "角速度 (deg/s):");
+        ESP_LOGI(TAG, "  X: %.2f", gyro_x);
+        ESP_LOGI(TAG, "  Y: %.2f", gyro_y);
+        ESP_LOGI(TAG, "  Z: %.2f", gyro_z);
+        ESP_LOGI(TAG, "溫度: %.2f °C", temp_c);
+
+        // 延遲
+        vTaskDelay(pdMS_TO_TICKS(1000));  // 每秒更新一次
+    }
 }
