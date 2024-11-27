@@ -2,18 +2,18 @@
 
 #include <stdio.h>
 #include "esp_err.h"
-#include "driver/i2c.h"
+#include "driver/i2c_master.h"  // 使用新版 API
 #include "esp_log.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// I2C 配置
-#define I2C_MASTER_SCL_IO           0      // SCL GPIO
-#define I2C_MASTER_SDA_IO           1      // SDA GPIO
-#define I2C_MASTER_NUM              0       // I2C port number
-#define I2C_MASTER_FREQ_HZ          400000  // I2C master clock frequency
+
+#define I2C_MASTER_NUM              I2C_NUM_0    // I2C port number
+#define I2C_MASTER_SCL_IO           GPIO_NUM_6            // GPIO number for I2C SCL (改為 GPIO0)
+#define I2C_MASTER_SDA_IO           GPIO_NUM_5            // GPIO number for I2C SDA (改為 GPIO1)
+#define I2C_MASTER_FREQ_HZ          400000       // I2C master clock frequency
 #define I2C_MASTER_TIMEOUT_MS       1000
 #define I2C_READ                    0 
 #define I2C_Write                    0 
@@ -37,6 +37,11 @@ typedef struct {
 // 函數宣告
 esp_err_t mpu6050_init(void);
 esp_err_t mpu6050_read_data(mpu6050_data_t*);
+esp_err_t mpu6050_read_reg(uint8_t reg_addr, uint8_t *data, size_t len); 
+esp_err_t mpu6050_write_reg(uint8_t reg_addr, uint8_t data);
+
+int mpu6050_i2c_scan();
+
 
 
 #ifdef __cplusplus

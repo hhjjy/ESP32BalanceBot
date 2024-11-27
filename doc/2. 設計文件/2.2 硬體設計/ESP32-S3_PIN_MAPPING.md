@@ -16,7 +16,24 @@
    - SDA: GPIO1 (與 MPU6050 共用)
    - VCC: 3.3V
    - GND: GND
-
+3. TB6612 馬達驅動器
+   - ESP32電壓輸出控制(電晶體)
+      - PWMA: GPIO42 (馬達A)
+      - PWMB: GPIO39 (馬達B)
+      - AIN1: GPIO41 (馬達A方向控制1)
+      - AIN2: GPIO40 (馬達A方向控制2)
+      - BIN1: GPIO38 (馬達B方向控制1)
+      - BIN2: GPIO37 (馬達B方向控制2)
+      - STBY:   (待機控制)
+   - ESP32電壓輸入 (需要分壓 )
+      - E2B:GPIO4 (馬達2B相輸入)
+      - E2A:GPIO5 (馬達2A相輸入)
+      - E1B:GPIO6 (馬達1B相輸入)
+      - E1A:GPIO7 (馬達1A相輸入)
+   
+   - VM: 12V (馬達電源)
+   - VCC: 5V (邏輯電源)
+   - GND: GND
 ## 左側腳位 (由上至下)
 
 | GPIO編號 | 基本功能 | RTC功能 | 特殊功能 | 使用狀態 | 備註 |
@@ -24,9 +41,9 @@
 | GND     | 電源    | -       | 接地      | 🔒 已使用   | 必要連接 |
 | 3.3V    | 電源    | -       | 3.3V電源  | 🔒 已使用   | 必要連接 |
 | RST     | 系統    | -       | 重置      | 🔒 已使用   | 系統重置 |
-| IO4     | GPIO    | RTC_GPIO4 | TOUCH4/ADC1_CH3 | ⚪ 未使用 | 支援觸控/ADC |
-| IO5     | GPIO    | RTC_GPIO5 | TOUCH5/ADC1_CH4 | ⚪ 未使用 | 支援觸控/ADC |
-| IO6     | GPIO    | RTC_GPIO6 | TOUCH6/ADC1_CH5 | ⚪ 未使用 | 支援觸控/ADC |
+| IO4     | GPIO    | RTC_GPIO4 | TOUCH4/ADC1_CH3 | ⚪ 未使用 |  |
+| IO5     | GPIO    | RTC_GPIO5 | TOUCH5/ADC1_CH4 | ✅ 已使用 | I2C SDA (MPU6050/OLED)   |
+| IO6     | GPIO    | RTC_GPIO6 | TOUCH6/ADC1_CH5 | ✅ 已使用 | I2C SCL (MPU6050/OLED)  |
 | IO7     | GPIO    | RTC_GPIO7 | TOUCH7/ADC1_CH6 | ⚪ 未使用 | 支援觸控/ADC |
 | IO15    | GPIO    | RTC_GPIO15 | U0RTS | ⚪ 未使用   | UART控制 |
 | IO16    | GPIO    | RTC_GPIO16 | U0CTS | ⚪ 未使用   | UART控制 |
@@ -35,10 +52,10 @@
 | IO8     | GPIO    | RTC_GPIO8 | TOUCH8/ADC1_CH7 | ⚪ 未使用 | 支援觸控/ADC |
 | IO19    | GPIO    | RTC_GPIO19 | USB_D- | ⚠️ 保留 | USB差分信號 |
 | IO20    | GPIO    | RTC_GPIO20 | USB_D+ | ⚠️ 保留 | USB差分信號 |
-| IO3     | GPIO    | RTC_GPIO3 | TOUCH3/ADC1_CH2 | ⚪ 未使用 | 支援觸控/ADC |
-| IO46    | GPIO    | -       | SPIWP    | ⚪ 未使用   | SPI通訊 |
-| IO9     | GPIO    | RTC_GPIO9 | TOUCH9/ADC1_CH8 | ⚪ 未使用 | 支援觸控/ADC |
-| IO10    | GPIO    | RTC_GPIO10 | TOUCH10/ADC1_CH9 | ⚪ 未使用 | 支援觸控/ADC |
+| IO3     | GPIO    | RTC_GPIO3 | TOUCH3/ADC1_CH2 | ✅ 已使用 | TB6612 E1A |
+| IO46    | GPIO    | -       | SPIWP    | ✅ 已使用   | TB6612 E1B |
+| IO9     | GPIO    | RTC_GPIO9 | TOUCH9/ADC1_CH8 | ✅ 已使用 | TB6612 E2A |
+| IO10    | GPIO    | RTC_GPIO10 | TOUCH10/ADC1_CH9 | ✅ 已使用 | TB6612 E2B |
 | IO11    | GPIO    | RTC_GPIO11 | TOUCH11/ADC2_CH0 | ⚪ 未使用 | 支援觸控/ADC |
 | IO12    | GPIO    | RTC_GPIO12 | TOUCH12/ADC2_CH1 | ⚪ 未使用 | 支援觸控/ADC |
 | 3.3V    | 電源    | -       | 3.3V電源  | 🔒 已使用   | 必要連接 |
@@ -48,19 +65,19 @@
 | GPIO編號 | 基本功能 | RTC功能 | 特殊功能 | 使用狀態 | 備註 |
 |---------|---------|---------|----------|---------|------|
 | GND     | 電源    | -       | 接地      | 🔒 已使用   | 必要連接 |
-| IO1     | GPIO    | RTC_GPIO1 | sar_i2c_sda_0 | ✅ 已使用 | I2C SDA (MPU6050/OLED) |
+| IO1     | GPIO    | RTC_GPIO1 | sar_i2c_sda_0 | ⚪ 未使用 | |
 | IO2     | GPIO    | RTC_GPIO2 | TOUCH2/ADC1_CH1 | ⚪ 未使用 | 支援觸控/ADC |
 | TXD     | UART    | -       | 串口發送   | ⚠️ 保留   | 預設UART0 |
 | RXD     | UART    | -       | 串口接收   | ⚠️ 保留   | 預設UART0 |
-| IO42    | GPIO    | -       | MTMS      | ⚪ 未使用   | - |
-| IO41    | GPIO    | -       | MTDI      | ⚪ 未使用   | - |
-| IO40    | GPIO    | -       | MISO      | ⚪ 未使用   | SPI通訊 |
-| IO39    | GPIO    | -       | MOSI      | ⚪ 未使用   | - |
-| IO38    | GPIO    | -       | CSO       | ⚪ 未使用   | - |
-| IO37    | GPIO    | -       | SPIHD     | ⚪ 未使用   | SPI通訊 |
-| IO36    | GPIO    | -       | SPICLK    | ⚪ 未使用   | - |
-| IO35    | GPIO    | -       | SPID      | ⚪ 未使用   | SPI數據 |
-| IO0     | GPIO    | RTC_GPIO0 | sar_i2c_scl_0 | ✅ 已使用 | I2C SCL (MPU6050/OLED) |
+| IO42    | GPIO    | -       | MTMS      | ⚪ 未使用   |  |
+| IO41    | GPIO    | -       | MTDI      | ✅ 已使用   | TB6612 PWMB |
+| IO40    | GPIO    | -       | MISO      | ✅ 已使用   | TB6612 BIN2 |
+| IO39    | GPIO    | -       | MOSI      | ✅ 已使用   | TB6612 BIN1 |
+| IO38    | GPIO    | -       | CSO       | ✅ 已使用   | TB6612 PWMA |
+| IO37    | GPIO    | -       | SPIHD     | ✅ 已使用   | TB6612 AIN2/SPI通訊 |
+| IO36    | GPIO    | -       | SPICLK    | ✅ 已使用   | TB6612 AIN1 |
+| IO35    | GPIO    | -       | SPID      | ✅ 已使用   | TB6612 STBY |
+| IO0     | GPIO    | RTC_GPIO0 | sar_i2c_scl_0 | ⚪ 未使用 |  |
 | IO45    | GPIO    | -       | SPIWP     | ⚪ 未使用   | SPI通訊 |
 | IO48    | GPIO    | -       | SPICLK_N  | ⚪ 未使用   | SPI差分時鐘 |
 | IO47    | GPIO    | -       | SPICLK_P  | ⚪ 未使用   | SPI差分時鐘 |
@@ -113,8 +130,14 @@
    - OLED: 0x3C
 7. 建議在 SCL(GPIO0) 和 SDA(GPIO1) 各接一個 4.7kΩ 上拉電阻到 3.3V
 8. I2C 通訊速率建議設定在 400kHz 以下，以確保穩定性
-
+9. TB6612 驅動器注意事項：
+   - VM 供電需要 12V/2A 以上的電源
+   - 確保 PWM 頻率設定在 25kHz 以下
+   - STBY 腳位需要拉高才能正常工作
+   - 建議在電源端加入濾波電容
+   - 馬達控制信號需要加入 100Ω 限流電阻
 ## 更新記錄
 - 2024-11-20 創建文檔
 - 2024-11-20 更新腳位分配：分配 GPIO0/GPIO1 用於 MPU6050 的 I2C 通訊
 - 2024-11-23 更新配置：將 OLED 改為 I2C 模式，與 MPU6050 共用 I2C 匯流排
+- 2024-11-24 新增 TB6612 馬達驅動器配置
