@@ -33,11 +33,11 @@ float pid_compute(pid_controller_t *pid, float input, float dt) {
     float error = pid->setpoint - input;
     
     // 比例項
-    float p_term = pid->kp * error;
+    pid->p_term = pid->kp * error;
     
     // 積分項
     pid->integral += error * dt;
-    
+
     // 積分限幅
     if (pid->anti_windup) {
         if (pid->integral > pid->output_max) {
@@ -46,7 +46,7 @@ float pid_compute(pid_controller_t *pid, float input, float dt) {
             pid->integral = pid->output_min;
         }
     }
-    float i_term = pid->ki * pid->integral;
+    pid->i_term = pid->ki * pid->integral;
     
     // 微分項
     float d_term;
@@ -59,9 +59,9 @@ float pid_compute(pid_controller_t *pid, float input, float dt) {
         d_term = pid->kd * (error - pid->prev_error) / dt;
         pid->prev_error = error;
     }
-    
+    pid->d_term = d_term;
     // 計算總輸出
-    float output = p_term + i_term + d_term;
+    float output = pid->p_term + pid->i_term + d_term;
     
     // 輸出限幅
     if (output > pid->output_max) {

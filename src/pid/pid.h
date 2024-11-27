@@ -20,7 +20,10 @@ typedef struct {
     float integral;            // 積分項
     float prev_error;          // 上一次誤差
     float prev_measurement;    // 上一次測量值
-    
+    // 
+    float p_term ; 
+    float i_term ; 
+    float d_term ; 
     // 控制標誌
     bool anti_windup;         // 積分限幅標誌
     bool derivative_on_measurement; // 是否在測量值上微分

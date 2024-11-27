@@ -41,21 +41,15 @@ void motor_pwm_init(void) {
         .hpoint = 0
     };
     ledc_channel_config(&ledc_channel_b);
+
+
 }
 void motor_set_pin(gpio_num_t pin, int level) {
     gpio_set_level(pin, level);
-    ESP_LOGI(TAG, "Pin %d set to %d (實際輸出: %s)", 
-             pin, 
-             level, 
-             level == OUTPUT_HIGH ? "LOW (0V)" : "HIGH (5V)");
 }
 
 int motor_read_pin(gpio_num_t pin) {
     int level = gpio_get_level(pin);
-    ESP_LOGI(TAG, "Pin %d read: %d (實際電平: %s)", 
-             pin, 
-             level, 
-             level == OUTPUT_HIGH ? "LOW (0V)" : "HIGH (5V)");
     return level;
 }
 
@@ -78,84 +72,113 @@ void motor_init(void) {
     motor_pwm_init();
 
     // 初始化所有控制腳位
-    motor_set_pin(MOTOR_AIN1, OUTPUT_HIGH);
-    motor_set_pin(MOTOR_AIN2, OUTPUT_HIGH);
-    motor_set_pin(MOTOR_BIN1, OUTPUT_HIGH);
-    motor_set_pin(MOTOR_BIN2, OUTPUT_HIGH);
-    motor_set_pin(MOTOR_STBY, OUTPUT_HIGH);
+    motor_set_pin(MOTOR_AIN1, OUTPUT_LOW);
+    motor_set_pin(MOTOR_AIN2, OUTPUT_LOW);
+    motor_set_pin(MOTOR_BIN1, OUTPUT_LOW);
+    motor_set_pin(MOTOR_BIN2, OUTPUT_LOW);
+    motor_set_pin(MOTOR_STBY, OUTPUT_LOW);
 
-    // 設定初始 PWM 為 0
-    motor_set_speed_A(0);
-    motor_set_speed_B(0);
+
 }
 
 void motor_set_speed_A(uint8_t speed) {
-    // 設定 PWMA 的 duty cycle (0-255)
+    // 設定 PWMA 的 duty cycle (0-128)
     uint32_t duty = (speed * ((1 << LEDC_DUTY_RES) - 1)) / 255;
     ledc_set_duty(LEDC_MODE, MOTOR_PWM_CHANNEL_A, duty);
     ledc_update_duty(LEDC_MODE, MOTOR_PWM_CHANNEL_A);
-    ESP_LOGI(TAG, "Motor A speed set to %d", speed);
 }
 
 void motor_set_speed_B(uint8_t speed) {
-    // 設定 PWMB 的 duty cycle (0-255)
+    // 設定 PWMB 的 duty cycle (0-128)
     uint32_t duty = (speed * ((1 << LEDC_DUTY_RES) - 1)) / 255;
     ledc_set_duty(LEDC_MODE, MOTOR_PWM_CHANNEL_B, duty);
     ledc_update_duty(LEDC_MODE, MOTOR_PWM_CHANNEL_B);
-    ESP_LOGI(TAG, "Motor B speed set to %d", speed);
 }
 
-// 修改 motor_forward_backward_test 函數
+void motor_set_direction_speed(MotorSelect motor, MotorDirection direction, uint8_t speed) {
+    motor_set_pin(MOTOR_STBY, OUTPUT_HIGH);  // 啟用馬達
+
+    if (motor == MOTOR_LEFT) {  // 左馬達 (Motor A)
+        switch (direction) {
+            case MOTOR_DIRECTION_FORWARD:
+                motor_set_pin(MOTOR_AIN1, OUTPUT_HIGH);
+                motor_set_pin(MOTOR_AIN2, OUTPUT_LOW);
+                motor_set_speed_A(speed);
+                break;
+            case MOTOR_DIRECTION_BACKWARD:
+                motor_set_pin(MOTOR_AIN1, OUTPUT_LOW);
+                motor_set_pin(MOTOR_AIN2, OUTPUT_HIGH);
+                motor_set_speed_A(speed);
+                break;
+            case MOTOR_DIRECTION_BRAKE:
+                motor_set_pin(MOTOR_AIN1, OUTPUT_HIGH);
+                motor_set_pin(MOTOR_AIN2, OUTPUT_HIGH);
+                motor_set_speed_A(speed);
+                break;
+            case MOTOR_DIRECTION_STOP:
+                motor_set_pin(MOTOR_AIN1, OUTPUT_LOW);
+                motor_set_pin(MOTOR_AIN2, OUTPUT_LOW);
+                motor_set_speed_A(0);
+                break;
+        }
+    } 
+    else if (motor == MOTOR_RIGHT) {  // 右馬達 (Motor B)
+        switch (direction) {
+            case MOTOR_DIRECTION_FORWARD:
+                motor_set_pin(MOTOR_BIN1, OUTPUT_HIGH);
+                motor_set_pin(MOTOR_BIN2, OUTPUT_LOW);
+                motor_set_speed_B(speed);
+                break;
+            case MOTOR_DIRECTION_BACKWARD:
+                motor_set_pin(MOTOR_BIN1, OUTPUT_LOW);
+                motor_set_pin(MOTOR_BIN2, OUTPUT_HIGH);
+                motor_set_speed_B(speed);
+                break;
+            case MOTOR_DIRECTION_BRAKE:
+                motor_set_pin(MOTOR_BIN1, OUTPUT_HIGH);
+                motor_set_pin(MOTOR_BIN2, OUTPUT_HIGH);
+                motor_set_speed_B(speed);
+                break;
+            case MOTOR_DIRECTION_STOP:
+                motor_set_pin(MOTOR_BIN1, OUTPUT_LOW);
+                motor_set_pin(MOTOR_BIN2, OUTPUT_LOW);
+                motor_set_speed_B(0);
+                break;
+        }
+    }
+}
+
+void motor_stop_all(void) {
+    // 停止所有馬達
+    motor_set_direction_speed(MOTOR_LEFT, MOTOR_DIRECTION_STOP, 0);
+    motor_set_direction_speed(MOTOR_RIGHT, MOTOR_DIRECTION_STOP, 0);
+    motor_set_pin(MOTOR_STBY, OUTPUT_LOW);  // 進入待機模式
+}
+
+
 void motor_forward_backward_test(void) {
     ESP_LOGI(TAG, "開始馬達正反轉測試");
     
-    // 啟用 STBY
-    motor_set_pin(MOTOR_STBY, OUTPUT_LOW);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-
-    // 測試馬達 A
-    ESP_LOGI(TAG, "測試馬達 A");
-    
-    // 馬達 A 正轉
-    ESP_LOGI(TAG, "馬達 A 正轉");
-    motor_set_speed_A(200);  // 設定速度約 80%
-    motor_set_pin(MOTOR_AIN1, OUTPUT_LOW);
-    motor_set_pin(MOTOR_AIN2, OUTPUT_HIGH);
-    vTaskDelay(pdMS_TO_TICKS(3000));
-    
-    // 馬達 A 停止
-    ESP_LOGI(TAG, "馬達 A 停止");
-    motor_set_speed_A(0);
-    motor_set_pin(MOTOR_AIN1, OUTPUT_HIGH);
-    motor_set_pin(MOTOR_AIN2, OUTPUT_HIGH);
+    // 左馬達測試
+    ESP_LOGI(TAG, "左馬達正轉");
+    motor_set_direction_speed(MOTOR_LEFT, MOTOR_DIRECTION_FORWARD, 150);
     vTaskDelay(pdMS_TO_TICKS(2000));
     
-    // 馬達 A 反轉
-    ESP_LOGI(TAG, "馬達 A 反轉");
-    motor_set_speed_A(200);
-    motor_set_pin(MOTOR_AIN1, OUTPUT_HIGH);
-    motor_set_pin(MOTOR_AIN2, OUTPUT_LOW);
-    vTaskDelay(pdMS_TO_TICKS(3000));
-    
-    // 馬達 A 停止
-    motor_set_speed_A(0);
-    motor_set_pin(MOTOR_AIN1, OUTPUT_HIGH);
-    motor_set_pin(MOTOR_AIN2, OUTPUT_HIGH);
+    ESP_LOGI(TAG, "左馬達反轉");
+    motor_set_direction_speed(MOTOR_LEFT, MOTOR_DIRECTION_BACKWARD, 150);
     vTaskDelay(pdMS_TO_TICKS(2000));
-
-    // 測試馬達 B (類似的測試程序)
-    ESP_LOGI(TAG, "測試馬達 B");
     
-    // 馬達 B 正轉
-    ESP_LOGI(TAG, "馬達 B 正轉");
-    motor_set_speed_B(200);
-    motor_set_pin(MOTOR_BIN1, OUTPUT_LOW);
-    motor_set_pin(MOTOR_BIN2, OUTPUT_HIGH);
-    vTaskDelay(pdMS_TO_TICKS(3000));
+    // 右馬達測試
+    ESP_LOGI(TAG, "右馬達正轉");
+    motor_set_direction_speed(MOTOR_RIGHT, MOTOR_DIRECTION_FORWARD, 150);
+    vTaskDelay(pdMS_TO_TICKS(2000));
     
-    // 以此類推...
-
-    // 最後停用 STBY
-    motor_set_pin(MOTOR_STBY, OUTPUT_HIGH);
+    ESP_LOGI(TAG, "右馬達反轉");
+    motor_set_direction_speed(MOTOR_RIGHT, MOTOR_DIRECTION_BACKWARD, 150);
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    
+    // 停止所有馬達
+    motor_stop_all();
+    
     ESP_LOGI(TAG, "馬達測試完成");
 }

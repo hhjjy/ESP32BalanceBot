@@ -11,16 +11,11 @@
 #define OLED_RESET_GPIO -1          // 重置腳位 (-1 表示不使用)
 static const char *TAG = "MAIN";
 #include <math.h>
-
+#include "debug/debug.h"
 // 定義數學常數
 #define RAD_TO_DEG 57.295779513082320876798154814105  // 180/PI
 #define DEG_TO_RAD 0.017453292519943295769236907684886  // PI/180
 #define PI 3.14159265359
-
-// #define I2C_MASTER_SCL_IO           GPIO_NUM_0    // SCL GPIO
-// #define I2C_MASTER_SDA_IO           GPIO_NUM_1    // SDA GPIO
-// #define I2C_MASTER_NUM              I2C_NUM_0     // I2C port number
-
 
 // 格式化輸出函數
 static void print_sensor_data(mpu6050_data_t* data) {
@@ -54,7 +49,7 @@ typedef struct {
     uint32_t timestamp;  // 可選，如果需要時間戳記
 } pitch_data_t;
 
-// MPU6050 任務
+// MPU6050 任務 100HZ
 static void mpu6050_task(void *pvParameters) {
     mpu6050_data_t sensor_data;
     float pitch_angle = 0;
@@ -114,7 +109,7 @@ static void mpu6050_task(void *pvParameters) {
                 }
 
                 // Debug 輸出
-                printf("Pitch:%f\n:degrees|t\n",pitch_angle) ; 
+                printf(">Pitch:%f\n",pitch_angle) ; 
                 // ESP_LOGI(TAG, "Pitch: %.2f°", pitch_angle);
             }
             
@@ -126,69 +121,49 @@ static void mpu6050_task(void *pvParameters) {
     }
 }
 
-// 馬達控制函數實現
 static void apply_motor_control(float control_output) {
-    // 這裡添加實際的馬達控制代碼
-    // 例如：設置 PWM 值和方向
-
-    // 將控制輸出轉換為 PWM 值（假設 PWM 範圍是 0-255）
     uint32_t pwm_value = (uint32_t)(fabs(control_output));
+    float motor_speed = (float)pwm_value;
     
     if (control_output > 0) {
-        // 正向旋轉
-        // ESP_LOGI(TAG, "Motor Forward, PWM: %lu", pwm_value);
+        motor_set_direction_speed(MOTOR_LEFT, MOTOR_DIRECTION_FORWARD, 130);
+        motor_set_direction_speed(MOTOR_RIGHT, MOTOR_DIRECTION_FORWARD, 130);
+        debug_print_motor_data(motor_speed, motor_speed);
     } else {
-        // 反向旋轉
-        // ESP_LOGI(TAG, "Motor Reverse, PWM: %lu", pwm_value);
+        motor_set_direction_speed(MOTOR_LEFT, MOTOR_DIRECTION_BACKWARD, 130);
+        motor_set_direction_speed(MOTOR_RIGHT, MOTOR_DIRECTION_BACKWARD, 130);
+        debug_print_motor_data(-motor_speed, -motor_speed);
     }
-
-    // 這裡添加實際的 PWM 輸出代碼
-    // 例如：
-    // ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0, pwm_value);
-    // ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0);
 }
-static void control_task(void *pvParameters) {
-    // 創建並初始化 PID 控制器
-    pid_controller_t pitch_controller;
-    pid_init(&pitch_controller, 
-             2.0f,    // Kp
-             0.1f,    // Ki
-             0.05f,   // Kd
-             0.0f,    // 目標角度
-             -100.0f, // 最小輸出
-             100.0f   // 最大輸出
-    );
 
-    const float control_period = 0.02f; // 20ms
+static void control_task(void *pvParameters) {
+    pid_controller_t pitch_controller;
+    pid_init(&pitch_controller, 5.0f, 0.1f, 0.05f, -6.8f, -255.0f, 255.0f);
+    
+    debug_data_t debug_data = {0};
     pitch_data_t received_pitch;
     TickType_t last_wake_time = xTaskGetTickCount();
     
-    // 檢查 Queue 是否存在
-    if (pitch_queue == NULL) {
-        ESP_LOGE(TAG, "Pitch queue not available!");
-        vTaskDelete(NULL);
-        return;
-    }
-
     while (1) {
-        // 從 Queue 接收 pitch 數據
         if (xQueueReceive(pitch_queue, &received_pitch, pdMS_TO_TICKS(10)) == pdTRUE) {
-            // 計算控制輸出
-            float control_output = pid_compute(&pitch_controller, 
-                                            received_pitch.pitch, 
-                                            control_period);
+            // 計算 PID 輸出
+            float control_output = pid_compute(&pitch_controller, received_pitch.pitch, 0.02f);
             
-            // 應用控制輸出
+            // 更新除錯數據
+            debug_data.pitch = received_pitch.pitch;
+            debug_data.setpoint = pitch_controller.setpoint;
+            debug_data.pid_output = control_output;
+            debug_data.p_term = pitch_controller.p_term;
+            debug_data.i_term = pitch_controller.i_term;
+            debug_data.d_term = pitch_controller.d_term;
+            
+            // 應用馬達控制
             apply_motor_control(control_output);
-
-            // 輸出調試信息
-            // ESP_LOGI(TAG, "Pitch: %.2f°, Control Output: %.2f", 
-            //         received_pitch.pitch, control_output);
-        } else {
-            ESP_LOGW(TAG, "Failed to receive pitch data");
+            
+            // 使用 Teleplot 格式打印除錯資訊
+            debug_print_all(&debug_data);
         }
         
-        // 確保固定的控制週期
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(20));
     }
 }
@@ -196,7 +171,11 @@ static void control_task(void *pvParameters) {
 
 
 void app_main(void) {
-    // 1. 初始化 MPU6050
+    // 1. 初始化馬達 
+    motor_init() ; 
+    motor_pwm_init() ;
+    motor_forward_backward_test(); 
+    // 2. 初始化 MPU6050
     esp_err_t ret = mpu6050_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize MPU6050");
@@ -204,19 +183,14 @@ void app_main(void) {
     }
     ESP_LOGI(TAG, "MPU6050 initialized successfully");
 
-    // 2. 初始化馬達 
-    motor_init() ; 
-    motor_pwm_init() ;
-    motor_forward_backward_test(); 
-
-    // 
+    // 3. 創建Quene
     pitch_queue = xQueueCreate(10, sizeof(pitch_data_t));
-    
     if (pitch_queue == NULL) {
         ESP_LOGE(TAG, "Failed to create queue!");
         return;
     }
-    // 創建任務
+
+
     xTaskCreate(
         mpu6050_task,          // 任務函數
         "mpu6050_task",        // 任務名稱
@@ -225,7 +199,8 @@ void app_main(void) {
         5,                     // 任務優先級
         NULL                   // 任務句柄
     );
-    // 創建任務
+    ESP_LOGI(TAG, "MPU6050 task created");
+
     xTaskCreate(
         control_task,          // 任務函數
         "control_task",        // 任務名稱
@@ -234,6 +209,7 @@ void app_main(void) {
         5,                     // 任務優先級
         NULL                   // 任務句柄
     );
+    ESP_LOGI(TAG, "Control task created");
 
-    ESP_LOGI(TAG, "MPU6050 task created");
+    
 }
